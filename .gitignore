@@ -2,7 +2,6 @@ Jia_web/node_modules/
 Jia_web/dist/
 Jia_web/.npm-cache/
 Jia_web/src/**/*.js
-Jia_web/src/**/*.d.ts
 Jia_web/*.js
 Jia_web/*.d.ts
 Jia_web/*.tsbuildinfo
