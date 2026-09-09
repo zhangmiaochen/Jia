@@ -1,0 +1,5 @@
+# 强制 Shell 脚本与容器文件使用 LF，避免 Windows 提交时转成 CRLF
+# 破坏 Docker 入口脚本的 shebang（#!/bin/sh）
+*.sh text eol=lf
+Dockerfile text eol=lf
+docker/* text eol=lf

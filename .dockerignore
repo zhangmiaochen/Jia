@@ -1,0 +1,28 @@
+# ===== 无关目录 =====
+.git
+计划/
+workspace-chrome-profile/
+Jia_mobile/
+
+# ===== 依赖与构建产物（本地缓存很大，禁止进构建上下文） =====
+**/node_modules
+**/dist
+**/.npm-cache
+**/.gocache*
+**/.gomodcache*
+**/.tsbuildinfo
+
+# ===== 运行数据 / 测试数据 =====
+Jia_api/data/
+Jia_api/data-test/
+Jia_api/storage/
+
+# ===== 根目录零散调试文件（仅匹配根级，不影响子目录源码） =====
+/*.png
+/*.jpg
+/*.jpeg
+/*.webp
+/*.json
+/*.txt
+/*.js
+/*.md
