@@ -52,7 +52,8 @@
 │   └── entrypoint.sh        # 启动时自动迁移 → 启动 Nginx → 启动 API
 ├── Dockerfile               # 多阶段构建（前端 + 后端 + 运行时）
 ├── .dockerignore
-└── .gitattributes
+├── .gitattributes
+└── .github/workflows/       # GitHub Actions 自动构建镜像（ghcr.io）
 ```
 
 ## 快速开始（本地开发）
@@ -140,6 +141,29 @@ docker build --build-arg NPM_REGISTRY=https://registry.npmmirror.com \
              --build-arg GOPROXY=https://goproxy.cn,direct \
              -t jia .
 ```
+
+## 自动构建（GitHub Actions）
+
+仓库已配置 `.github/workflows/docker.yml`，推送到 GitHub 后自动构建并推送镜像到 GitHub Container Registry（ghcr.io）：
+
+| 触发时机 | 推送的标签 |
+|---|---|
+| push `main` | `ghcr.io/zhangmiaochen/jia:main` / `:latest` / `:sha-xxxxxx` |
+| push `v*` 版本标签 | `ghcr.io/zhangmiaochen/jia:v1.2.3` / `:latest` |
+| PR 到 `main` | 只构建验证，不推送（`pr-N` / `sha-xxxxxx`） |
+
+```bash
+# 拉取运行（无需本地构建）
+docker pull ghcr.io/zhangmiaochen/jia:latest
+docker run -d --name jia \
+  -p 8081:80 -v jia-data:/data \
+  -e JIA_JWT_SECRET=请替换为随机字符串 \
+  ghcr.io/zhangmiaochen/jia:latest
+```
+
+- 构建使用 BuildKit 层缓存；多架构 `linux/amd64` + `linux/arm64`（arm64 由 QEMU 模拟，速度较慢，只需 x86 时可删去）
+- GHCR 包**默认私有**：本地使用需先 `docker login ghcr.io`；想让所有人可拉取，到仓库 Settings → Packages 里把包设为 Public
+- GitHub Runner 直连官方 `npmjs` / `proxy.golang.org` 没有问题；如遇网络问题，可在 workflow 的 `build-push-action` 步骤里加 `build-args` 传国内镜像：`NPM_REGISTRY=https://registry.npmmirror.com`、`GOPROXY=https://goproxy.cn,direct`
 
 ### 数据与备份
 
