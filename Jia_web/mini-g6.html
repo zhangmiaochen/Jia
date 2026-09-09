@@ -1,0 +1,38 @@
+﻿<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0}#c{width:940px;height:638px;border:1px solid #ccc}</style></head><body><div id="c"></div>
+<script src="/graph-data.js"></script>
+<script type="module">
+import { Graph } from '/node_modules/.vite/deps/@antv_g6.js'
+import { layoutFamilyGraph } from '/src/utils/graphLayout.ts'
+const mode = new URLSearchParams(location.search).get('m') || 'full'
+let people = window.GRAPH_DATA.data.nodes
+let allEdges = window.GRAPH_DATA.data.edges
+if (mode === 'n5') people = people.slice(0, 5)
+if (mode === 'n10') people = people.slice(0, 10)
+if (mode === 'n17-nodes') { allEdges = [] }
+const ids = new Set(people.map((p) => p.id))
+let edges = allEdges.filter((e) => ids.has(e.from_person_id) && ids.has(e.to_person_id))
+const result = layoutFamilyGraph(people, edges)
+const center = window.GRAPH_DATA.data.center || ''
+const nodes = people.map((p) => {
+  const pt = result.points.get(p.id) || { x: 0, y: 0 }
+  const isCenter = center !== '' && p.id === center
+  return { id: p.id, data: { name: p.name }, style: { fill: isCenter ? '#17352d' : '#fffdf8', stroke: isCenter ? '#17352d' : '#afc3b5', strokeWidth: 2, labelFill: isCenter ? '#ffffff' : '#26473c' } }
+})
+const es = []
+for (const [key, e] of result.drawnEdgeByPair) {
+  es.push({ id: e.edge.id, source: e.fromId, target: e.toId, data: { label: e.label, derived: e.derived, sameLevel: e.sameLevel }, style: { stroke: '#93b3a1', strokeWidth: 2, lineDash: e.derived ? [6, 4] : undefined, labelText: e.label, labelBackground: true, labelBackgroundFill: '#fffdf8' } })
+}
+const g = new Graph({ container: document.getElementById('c'), data: { nodes, edges: es }, autoResize: true, padding: 24, node: { type: 'rect', style: { size: [150, 58], radius: 6, labelText: (d) => String(d.data?.name || ''), labelPlacement: 'center', labelFontSize: 15, labelFontWeight: 600 } }, edge: { type: (d) => (d.data?.sameLevel ? 'line' : 'cubic') }, behaviors: ['drag-canvas', 'zoom-canvas', 'drag-element'] })
+await g.render()
+const canvases = document.querySelectorAll('#c canvas')
+let dark = 0
+for (const c of canvases) {
+  try {
+    const ctx = c.getContext('2d')
+    if (!ctx) continue
+    const d = ctx.getImageData(60, 60, 900, 500).data
+    for (let i = 0; i < d.length; i += 4) { if (d[i] < 120 && d[i+3] > 200) { dark++; break } }
+  } catch (e) {}
+}
+window.__probe = mode + ' nodes=' + nodes.length + ' edges=' + es.length + ' dark=' + dark
+</script></body></html>

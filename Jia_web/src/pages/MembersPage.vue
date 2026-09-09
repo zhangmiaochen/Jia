@@ -1,0 +1,10 @@
+<script setup lang="ts">
+import { ref } from 'vue'; import { Message } from '@arco-design/web-vue'; import { familyApi } from '../api'; import type { FamilyMember } from '../types'
+import { useSessionStore } from '../stores/session'
+const inviteToken = ref(''); const accepting = ref(false); const session = useSessionStore()
+async function accept() { if (!inviteToken.value.trim() || accepting.value) return; accepting.value = true; try { const result = await familyApi.acceptInvite(inviteToken.value.trim()); await session.loadFamilies(); session.setActiveFamily(result.family_id); inviteToken.value = ''; emit('refresh'); Message.success('已加入家族') } catch (e: any) { Message.error(e.message) } finally { accepting.value = false } }
+const props = defineProps<{ members: FamilyMember[] }>(); const emit = defineEmits<{ invite: []; refresh: [] }>()
+async function role(m: FamilyMember, value: string) { try { await familyApi.updateMember(m.id, { role: value as any }); emit('refresh'); Message.success('成员角色已更新') } catch (e: any) { Message.error(e.message) } }
+async function remove(m: FamilyMember) { try { await familyApi.removeMember(m.id); emit('refresh'); Message.success('成员已移除') } catch (e: any) { Message.error(e.message) } }
+</script>
+<template><div class="action-row"><a-input v-model="inviteToken" placeholder="邀请凭证" style="max-width:360px" /><a-button :loading="accepting" :disabled="!inviteToken.trim()" @click="accept">接受邀请</a-button></div><div class="section-head"><h2>家族成员</h2><a-button type="primary" @click="emit('invite')">邀请成员</a-button></div><div class="panel"><div v-for="m in props.members" :key="m.id" class="member"><div><strong>{{ m.display_name }}</strong><small>{{ m.email }}</small></div><div class="action-row"><a-select v-if="m.role !== 'owner'" :model-value="m.role" style="width:110px" @change="role(m, String($event))"><a-option value="editor">编辑者</a-option><a-option value="viewer">只读</a-option></a-select><a-popconfirm v-if="m.role !== 'owner'" content="确定移除成员？" @ok="remove(m)"><a-button status="danger">移除</a-button></a-popconfirm><span v-else class="tag">所有者</span></div></div><a-empty v-if="!members.length" /></div></template>

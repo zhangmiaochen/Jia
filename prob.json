@@ -1,0 +1,9 @@
+{
+  "html": "<canvas width=\"940\" height=\"638\" tabindex=\"1\" style=\"width: 940px; height: 638px; grid-area: 1 / 1 / 2 / 2; outline: none; pointer-events: none;\"></canvas><canvas width=\"940\" height=\"638\" tabindex=\"1\" style=\"width: 940px; height: 638px; touch-action: none; grid-area: 1 / 1 / 2 / 2; outline: none;\"></canvas><canvas width=\"940\" height=\"638\" tabindex=\"1\" style=\"width: 940px; height: 638px; grid-area: 1 / 1 / 2 / 2; outline: none; pointer-events: none;\"></canvas><canvas width=\"940\" height=\"638\" tabindex=\"1\" style=\"width: 940px; height: 638px; grid-area: 1 / 1 / 2 / 2; outline: none; pointer-events: none;\"></canvas>",
+  "states": [
+    [],
+    [],
+    [],
+    []
+  ]
+}

@@ -1,0 +1,13 @@
+Jia_web/node_modules/
+Jia_web/dist/
+Jia_web/.npm-cache/
+Jia_web/src/**/*.js
+Jia_web/src/**/*.d.ts
+Jia_web/*.js
+Jia_web/*.d.ts
+Jia_web/*.tsbuildinfo
+Jia_api/.gocache*/
+Jia_api/.gomodcache*/
+Jia_api/data/
+Jia_api/storage/*
+Jia_api/storage/.gitkeep
