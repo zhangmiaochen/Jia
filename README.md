@@ -165,6 +165,23 @@ docker run -d --name jia \
 - GHCR 包**默认私有**：本地使用需先 `docker login ghcr.io`；想让所有人可拉取，到仓库 Settings → Packages 里把包设为 Public
 - GitHub Runner 直连官方 `npmjs` / `proxy.golang.org` 没有问题；如遇网络问题，可在 workflow 的 `build-push-action` 步骤里加 `build-args` 传国内镜像：`NPM_REGISTRY=https://registry.npmmirror.com`、`GOPROXY=https://goproxy.cn,direct`
 
+## 客户端部署（Docker Compose）
+
+把 `docker-compose.yml` 与 `.env.example` 一并交给客户端即可一键部署：
+
+```bash
+# 客户端机器上（docker compose v2）
+cp .env.example .env          # Windows: copy .env.example .env
+# 编辑 .env 设置 JIA_JWT_SECRET（openssl rand -hex 32 生成），每个客户端必须不同
+docker compose up -d
+# 访问 http://<服务器IP>:8081
+```
+
+- 数据持久化在命名卷 `jia-data`（SQLite 数据库 + 上传照片），`docker compose up` 不丢数据；升级用 `docker compose pull && docker compose up -d`
+- 忘记设置 `JIA_JWT_SECRET`（或仍用开发默认值）时，容器启动会**校验失败并给出中文提示**，防止误用开发密钥
+- 镜像从 `ghcr.io/zhangmiaochen/jia` 拉取：包需设为 Public，或在客户端先 `docker login ghcr.io`（PAT 取 read:packages 权限）
+- 支持换成 `build:` 本地源码构建（见 compose 内注释）
+
 ### 数据与备份
 
 - 数据库：`/data/jia.db`（SQLite）

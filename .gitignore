@@ -10,3 +10,6 @@ Jia_api/.gomodcache*/
 Jia_api/data/
 Jia_api/storage/*
 Jia_api/storage/.gitkeep
+
+# 本地部署密钥（.env.example 可入库）
+.env

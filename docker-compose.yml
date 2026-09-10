@@ -1,0 +1,64 @@
+# ============================================================================
+# 家 · 数字家族档案 —— 客户端一键部署（Docker Compose）
+#
+# 部署步骤（本项目目录下执行）：
+#   1. 复制 .env.example 为 .env，设置 JIA_JWT_SECRET（每个客户端必须不同）
+#   2. docker compose up -d
+#   3. 浏览器访问 http://<客户端服务器IP>:8081
+#
+# 常用命令：
+#   查看状态   docker compose ps
+#   查看日志   docker compose logs -f
+#   升级       docker compose pull && docker compose up -d
+#   停止       docker compose down
+#
+# 数据备份（卷 jia-data 内含 SQLite 数据库与上传照片）：
+#   docker run --rm -v jia-family_jia-data:/data -v "$PWD/backup:/backup" \
+#     alpine tar czf /backup/jia-backup-$(date +%F).tgz -C /data .
+# ============================================================================
+
+name: jia-family
+
+services:
+  jia:
+    # 正式镜像从 GitHub 容器仓库拉取（包需设为 Public，或客户端先 docker login ghcr.io）
+    image: ghcr.io/zhangmiaochen/jia:latest
+    # 如需本地源码构建，改为：
+    #   build:
+    #     context: .
+    #     dockerfile: Dockerfile
+    # 并把 image 一行注释掉
+
+    restart: unless-stopped
+
+    ports:
+      # 宿主机 8081 -> 容器 80。
+      # 前端默认请求 http://<页面host>:8081/api/v1，因此对外端口必须保持 8081，
+      # 否则页面能打开但 API 连不上；除非镜像构建时用 --build-arg VITE_API_URL 指定了其他地址。
+      - "${JIA_HTTP_PORT:-8081}:80"
+
+    volumes:
+      # SQLite 数据库 + 上传的媒体文件（容器内 /data，删除该卷会丢失数据）
+      - jia-data:/data
+
+    environment:
+      # JWT 签名密钥：必填。取值来自同目录 .env（模板见 .env.example）。
+      # 未设置或仍为开发默认值时，容器入口脚本会给出中文报错并拒绝启动（见 docker/entrypoint.sh）。
+      - JIA_JWT_SECRET=${JIA_JWT_SECRET}
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+
+    logging:
+      # 限制日志大小，避免客户端磁盘被日志撑满
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  jia-data:
