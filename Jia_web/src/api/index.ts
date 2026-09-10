@@ -1,5 +1,5 @@
 import { api } from './client'
-import type { Activity, Book, Family, FamilyMember, Genealogy, GraphData, Person, PersonFamily, Photo, Relation, User } from '../types'
+import type { Activity, Book, Family, FamilyBrief, FamilyMember, Genealogy, GraphData, MergeInvite, MergePreview, MergeSummary, Person, PersonFamily, Photo, Relation, User } from '../types'
 
 export const authApi = {
   register: (payload: { email: string; password: string; displayName: string }) => api.post<{ token: string; user: User }>('/auth/register', payload),
@@ -21,6 +21,10 @@ export const familyApi = {
   acceptInvite: (token: string) => api.post<{ family_id: string; joined: boolean }>(`/invites/${token}/accept`),
   activities: (id: string) => api.get<Activity[]>(`/families/${id}/activities`),
   graph: (id: string, centerPersonID = '') => api.get<GraphData>(`/families/${id}/graph`, { params: centerPersonID ? { center_person_id: centerPersonID } : undefined }),
+  createMergeInvite: (id: string) => api.post<{ token: string; expires_at: string; target_family: FamilyBrief }>(`/families/${id}/merge-invites`),
+  mergeInvite: (token: string) => api.get<MergeInvite>(`/merge-invites/${encodeURIComponent(token)}`),
+  previewMerge: (token: string, sourceFamilyID: string) => api.post<MergePreview>(`/merge-invites/${encodeURIComponent(token)}/preview`, { source_family_id: sourceFamilyID }),
+  executeMerge: (token: string, payload: { source_family_id: string; pairs: { source_person_id: string; target_person_id: string }[]; merge_same_name_genealogies: boolean }) => api.post<MergeSummary>(`/merge-invites/${encodeURIComponent(token)}/execute`, payload),
 }
 export const genealogyApi = {
   list: (familyId: string) => api.get<Genealogy[]>(`/families/${familyId}/genealogies`),

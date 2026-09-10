@@ -15,7 +15,7 @@ import MembersPage from './pages/MembersPage.vue'
 import FamilyPage from './pages/FamilyPage.vue'
 import ActivityPage from './pages/ActivityPage.vue'
 import RecordModals from './components/RecordModals.vue'
-import type { Activity, Book, FamilyMember, Genealogy, GraphData, Person, PersonFamily, Photo } from './types'
+import type { Activity, Book, FamilyMember, Genealogy, GraphData, MergeSummary, Person, PersonFamily, Photo } from './types'
 import { useRoute, useRouter } from 'vue-router'
 
 const session = useSessionStore()
@@ -32,13 +32,19 @@ const personForm = ref<{ name: string; gender: 'male' | 'female' | 'unknown'; bi
 const relationForm = ref({ toPersonID: '', relationType: 'FATHER', customName: '', note: '' }); const bookForm = ref({ title: '', rootPersonID: '', contentJSON: { type: 'doc', content: [{ type: 'paragraph' }] } }); const editingBook = ref<Book | null>(null); const bookEditorText = ref('')
 const navItems = [{ key: 'home', label: '家族首页', icon: '⌂' }, { key: 'genealogy', label: '族谱', icon: '⌘' }, { key: 'persons', label: '人物', icon: '♙' }, { key: 'books', label: '家谱', icon: '▤' }, { key: 'photos', label: '照片', icon: '▧' }, { key: 'graph', label: '关系图', icon: '⌁' }, { key: 'members', label: '家族成员', icon: '♧' }, { key: 'family', label: '家族资料', icon: '▦' }, { key: 'activity', label: '动态', icon: '◷' }]
 const activeFamily = computed(() => session.activeFamily)
+const myRole = computed(() => members.value.find((item) => item.user_id === session.user?.id)?.role || '')
+const mergeToken = ref(String(route.query.merge || ''))
 const pageMeta = computed<[string, string, string]>(() => {
   const metas: Record<string, [string, string, string]> = { home: ['ARCHIVE / OVERVIEW', '家族首页', '这里是家族档案的总览。每一条记录，都在为下一代保留一份清晰的来处。'], genealogy: ['LINEAGE / RECORDS', '族谱', '用世系与关系，把散落在不同地方的家人重新连在一起。'], persons: ['PEOPLE / INDEX', '人物', '家族中的每一位成员，都值得拥有一份完整而有温度的档案。'], books: ['MEMORY / LIBRARY', '家谱', '记录人物生平、家庭故事与那些不该被遗忘的时刻。'], photos: ['PHOTOS / ALBUM', '照片', '为老照片留下名字、时间与它背后的故事。'], graph: ['RELATIONS / MAP', '关系图', '从一个人出发，查看一张家族关系的切片。'], members: ['FAMILY / COLLABORATION', '家族成员', '邀请家人共同维护这份属于全家的档案。'], family: ['FAMILY / PROFILE', '家族资料', '记录家族的姓氏、起源、迁徙与家训。'], activity: ['ARCHIVE / ACTIVITY', '家族动态', '最近发生的每一次更新，都会在这里留下痕迹。'] }
   return metas[page.value] || metas.home
 })
 
 watch(() => route.name, (name) => { if (typeof name === 'string') page.value = name })
+// 合并码可以做成 /family?merge=XXXX-XXXX-XXXX 的链接发给对方：进来自动跳到家族资料页并打开合并向导。
+watch(() => route.query.merge, (value) => { const token = typeof value === 'string' ? value.trim() : ''; if (!token) return; mergeToken.value = token; if (page.value !== 'family') router.push({ name: 'family' }) })
+onMounted(() => { if (mergeToken.value && page.value !== 'family') router.push({ name: 'family' }) })
 onMounted(() => session.bootstrap().then(() => { if (session.isAuthenticated) loadAll() }))
+async function afterMerge(summary: MergeSummary) { try { await session.loadFamilies(); if (summary?.target_family?.id) session.setActiveFamily(summary.target_family.id); selectedPerson.value = null; selectedPersonId.value = ''; graph.value = null; await loadAll(); Message.success(`已切换到「${summary?.target_family?.name || '合并后的家族'}」`) } catch (error: any) { Message.error(error.message) } }
 async function loadAll() { if (!activeFamily.value) return; busy.value = true; try { [genealogies.value, persons.value, books.value, activities.value, members.value, photos.value] = await Promise.all([genealogyApi.list(activeFamily.value.id), personApi.list(activeFamily.value.id), bookApi.list(activeFamily.value.id), familyApi.activities(activeFamily.value.id), familyApi.members(activeFamily.value.id), photoApi.list(activeFamily.value.id)]); graph.value = await familyApi.graph(activeFamily.value.id, selectedPersonId.value) } catch (error: any) { Message.error(error.message) } finally { busy.value = false } }
 async function submitAuth(payload: { mode: 'login' | 'register' | 'forgot' | 'reset'; email: string; password: string; confirmPassword: string; displayName: string; resetToken: string }) {
   busy.value = true
@@ -138,7 +144,7 @@ function personName(id: string) { return persons.value.find((person) => person.i
       <BooksPage v-else-if="page === 'books'" :books="books" :members="members" :persons="persons" :family-id="activeFamily?.id" :person-name="personName" :format-time="formatTime" @create="createBook" @open="openBook" @refresh="loadAll" />
       <PhotosPage v-else-if="page === 'photos'" :photos="photos" :persons="persons" :person-name="personName" :format-time="formatTime" @upload="createPhoto" @refresh="loadAll" />
       <MembersPage v-else-if="page === 'members'" :members="members" @invite="memberVisible = true" @refresh="loadAll" />
-      <FamilyPage v-else-if="page === 'family'" :family="activeFamily" @edit="editFamily" />
+      <FamilyPage v-else-if="page === 'family'" :family="activeFamily" :my-role="myRole" :merge-token="mergeToken" @edit="editFamily" @merged="afterMerge" />
       <ActivityPage v-else-if="page === 'activity'" :activities="activities" :format-time="formatTime" />
     </section>
     <RecordModals :person-visible="personVisible" :relation-visible="relationVisible" :book-visible="bookVisible" :book-editor-visible="bookEditorVisible" :family-visible="familyVisible" :family-editing="familyEditing" :genealogy-visible="genealogyVisible" :member-visible="memberVisible" :photo-visible="photoVisible" :persons="persons" :genealogies="genealogies" :selected-person="selectedPerson" :editing-book="editingBook" :person-form="personForm" :relation-form="relationForm" :book-form="bookForm" :book-editor-text="bookEditorText" :family-form="familyForm" :genealogy-form="genealogyForm" :member-form="memberForm" :photo-form="photoForm" @update:person-visible="personVisible = $event" @update:relation-visible="relationVisible = $event" @update:book-visible="bookVisible = $event" @update:book-editor-visible="bookEditorVisible = $event" @update:book-editor-text="bookEditorText = $event" @update:family-visible="familyVisible = $event" @update:genealogy-visible="genealogyVisible = $event" @update:member-visible="memberVisible = $event" @update:photo-visible="photoVisible = $event" @save-person="savePerson" @save-relation="saveRelation" @save-book="saveBook" @save-book-editor="saveBookEditor" @save-family="saveFamily" @save-genealogy="saveGenealogy" @invite-member="inviteMember" @upload-photo="uploadPhoto" @photo-file-change="onPhotoFileChange" />

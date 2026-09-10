@@ -146,6 +146,34 @@ CREATE TABLE IF NOT EXISTS activities (
   created_at TEXT NOT NULL
 );
 
+-- 家族合并：token 是发给「被并入方 owner」的合并码，target_family_id 是接收方（主家族）；
+-- source_family_id / redeemed_by / executed_at 在对方确认执行时写入。
+-- 合并执行后 source 家族的内容全部迁入 target，source 家族行保留为无成员的空壳（可按 source_family_id 追溯）。
+-- 注意：cmd/server/merge.go 中的 mergeSchema 与本定义保持一致，服务启动时会再确保一次（老库无需先跑 migrate）。
+CREATE TABLE IF NOT EXISTS family_merges (
+  id TEXT PRIMARY KEY,
+  token TEXT NOT NULL UNIQUE,
+  target_family_id TEXT NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+  source_family_id TEXT NOT NULL DEFAULT '',
+  created_by TEXT NOT NULL REFERENCES users(id),
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  redeemed_by TEXT NOT NULL DEFAULT '',
+  executed_at TEXT NOT NULL DEFAULT '',
+  summary_json TEXT NOT NULL DEFAULT '{}'
+);
+
+-- 人物对照结果（哪些旧人物合并进了哪个新人物），保留用于事后追溯。
+CREATE TABLE IF NOT EXISTS family_merge_pairs (
+  merge_id TEXT NOT NULL REFERENCES family_merges(id) ON DELETE CASCADE,
+  source_person_id TEXT NOT NULL,
+  source_person_name TEXT NOT NULL DEFAULT '',
+  target_person_id TEXT NOT NULL,
+  PRIMARY KEY (merge_id, source_person_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_family_merges_target ON family_merges(target_family_id);
+CREATE INDEX IF NOT EXISTS idx_family_merges_source ON family_merges(source_family_id);
 CREATE INDEX IF NOT EXISTS idx_family_members_user ON family_members(user_id);
 CREATE INDEX IF NOT EXISTS idx_genealogies_family ON genealogies(family_id);
 CREATE INDEX IF NOT EXISTS idx_persons_family ON persons(family_id);

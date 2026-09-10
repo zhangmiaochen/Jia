@@ -146,6 +146,10 @@ func main() {
 	if err := db.QueryRow("SELECT COUNT(*) FROM users").Scan(&userTable); err != nil {
 		log.Fatalf("数据库 %s 缺少 users 表（schema 未初始化）。请在 Jia_api 目录下执行: go run ./cmd/migrate 后重试", dbPath)
 	}
+	// 家族合并表为纯新增，老库无需先跑 migrate 即可使用（与 migrations/001_init.sql 中的定义一致）。
+	if err := ensureMergeSchema(db); err != nil {
+		log.Printf("警告：初始化家族合并表失败：%v", err)
+	}
 	a := &app{db: db, jwtSecret: []byte(secret), storageDir: storageDir}
 	log.Printf("数据文件: %s", dbPath)
 	log.Printf("存储目录: %s", storageDir)
@@ -176,6 +180,10 @@ func (a *app) routes() http.Handler {
 			r.Delete("/members/{memberID}", a.deleteMember)
 			r.Post("/families/{familyID}/invites", a.createInvite)
 			r.Post("/invites/{token}/accept", a.acceptInvite)
+			r.Post("/families/{familyID}/merge-invites", a.createMergeInvite)
+			r.Get("/merge-invites/{token}", a.getMergeInvite)
+			r.Post("/merge-invites/{token}/preview", a.previewMerge)
+			r.Post("/merge-invites/{token}/execute", a.executeMerge)
 			r.Get("/families/{familyID}/genealogies", a.listGenealogies)
 			r.Post("/families/{familyID}/genealogies", a.createGenealogy)
 			r.Get("/genealogies/{genealogyID}", a.getGenealogy)
